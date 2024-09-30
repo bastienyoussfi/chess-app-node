@@ -1,13 +1,14 @@
-import { Board, Move } from '../types';
-import { cloneBoard } from '../utils/BoardUtils';
-import { initialBoard } from '../utils/BoardUtils';
-import { isValidMove } from '../utils/MoveValidation';
-import { makeMove } from '../utils/MoveValidation';
-import { isCheck } from '../utils/MoveValidation';
-import { isCheckmate } from '../utils/MoveValidation';
-import { isStalemate } from '../utils/MoveValidation';
-import { Piece } from '../types';
-import { GameState } from '../types';
+import Board from '../types/board';
+import Move from '../interfaces/move';
+import Piece from '../interfaces/piece';
+import GameState from '../interfaces/game-state';
+import { cloneBoard } from '../utils/board-utils';
+import { initialBoard } from '../utils/board-utils';
+import { isCheck } from '../utils/move-validation';
+import { isCheckmate } from '../utils/move-validation';
+import { isStalemate } from '../utils/move-validation';
+import { isValidMove } from '../utils/move-validation';
+import { makeMove } from '../utils/move-validation';
 
 export class Game {
   private board: Board;
@@ -24,16 +25,36 @@ export class Game {
     this.timeRemaining = { white: 600, black: 600 }; // 10 minutes per player
   }
 
+  getBoard(): Board {
+    return this.board;
+  }
+
+  getMoveHistory(): Move[] {
+    return this.moveHistory;
+  }
+
+  getCurrentPlayer(): 'white' | 'black' {
+    return this.currentPlayer;
+  }
+
+  getCapturedPieces(): { white: Piece[], black: Piece[] } {
+    return this.capturedPieces;
+  }
+
+  getTimeRemaining(): { white: number, black: number } {
+    return this.timeRemaining;
+  }
+
   getGameState(): GameState {
     return {
-      board: this.board,
-      moveHistory: this.moveHistory,
-      currentPlayer: this.currentPlayer,
+      board: this.getBoard(),
+      moveHistory: this.getMoveHistory(),
+      currentPlayer: this.getCurrentPlayer(),
       isCheck: isCheck(this.board, this.currentPlayer),
       isCheckmate: isCheckmate(this.board, this.currentPlayer),
       isStalemate: isStalemate(this.board, this.currentPlayer),
-      capturedPieces: this.capturedPieces,
-      timeRemaining: this.timeRemaining,
+      capturedPieces: this.getCapturedPieces(),
+      timeRemaining: this.getTimeRemaining(),
     };
   }
 
@@ -67,6 +88,13 @@ export class Game {
     const lastMove = this.moveHistory.pop()!;
     this.board = makeMove(this.board, { from: lastMove.to, to: lastMove.from });
     this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
+    
+    // Remove the last captured piece if there was one
+    const lastCapturedPiece = this.capturedPieces[this.currentPlayer].pop();
+    if (lastCapturedPiece) {
+      this.board[lastMove.to.row][lastMove.to.col] = lastCapturedPiece;
+    }
+    
     return true;
   }
 

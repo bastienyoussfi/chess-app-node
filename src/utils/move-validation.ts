@@ -1,60 +1,48 @@
-import { Board, Move, Piece, Position } from '../types';
+import Board from "../types/board";
+import Move from "../interfaces/move";
+import Piece from "../interfaces/piece";
+import Position from "../interfaces/position";
 
 export function isValidMove(board: Board, move: Move, currentPlayer: 'white' | 'black'): boolean {
   const { from, to } = move;
   const piece = board[from.row][from.col];
-  if (!piece) return false;
+  if (!piece || piece.color !== currentPlayer) return false;
 
-  // Check if the destination is occupied by a piece of the same color
   if (board[to.row][to.col] && board[to.row][to.col]?.color === piece.color) {
     return false;
   }
 
-  // Add castling logic
-  if (piece.type === 'K' && Math.abs(move.to.col - move.from.col) === 2) {
-    return isValidCastling(board, move, currentPlayer);
-  }
-
-  // Add en passant logic
-  if (piece.type === 'P' && move.to.col !== move.from.col && !board[move.to.row][move.to.col]) {
-    return isValidEnPassant(board, move, currentPlayer);
-  }
+  let isValid = false;
 
   switch (piece.type) {
-    case 'P': return isValidPawnMove(board, move, piece.color);
-    case 'R': return isValidRookMove(board, move);
-    case 'N': return isValidKnightMove(move);
-    case 'B': return isValidBishopMove(board, move);
-    case 'Q': return isValidQueenMove(board, move);
-    case 'K': return isValidKingMove(move);
-    default: return false;
+    case 'P': isValid = isValidPawnMove(board, move, piece.color); break;
+    case 'R': isValid = isValidRookMove(board, move); break;
+    case 'N': isValid = isValidKnightMove(move); break;
+    case 'B': isValid = isValidBishopMove(board, move); break;
+    case 'Q': isValid = isValidQueenMove(board, move); break;
+    case 'K': isValid = isValidKingMove(move); break;
   }
-}
 
-function isValidCastling(board: Board, move: Move, currentPlayer: 'white' | 'black'): boolean {
-  // Implement castling rules
-  // Check if king and rook haven't moved, path is clear, and king is not in check
-  // ...
-  return true;
-}
+  if (isValid) {
+    // Check if the move puts the current player in check
+    const newBoard = makeMove(board, move);
+    if (isCheck(newBoard, currentPlayer)) {
+      return false;
+    }
+  }
 
-function isValidEnPassant(board: Board, move: Move, currentPlayer: 'white' | 'black'): boolean {
-  // Implement en passant rules
-  // Check if the last move was a two-square pawn advance and this move captures that pawn
-  // ...
-  return true;
+  return isValid;
 }
 
 export function isCheck(board: Board, kingColor: 'white' | 'black'): boolean {
-  // Find the king's position
   const kingPosition = findKing(board, kingColor);
-  
-  // Check if any opponent's piece can attack the king
+  const opponentColor = kingColor === 'white' ? 'black' : 'white';
+
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       const piece = board[row][col];
-      if (piece && piece.color !== kingColor) {
-        if (isValidMove(board, { from: { row, col }, to: kingPosition }, piece.color)) {
+      if (piece && piece.color === opponentColor) {
+        if (isValidMove(board, { from: { row, col }, to: kingPosition }, opponentColor)) {
           return true;
         }
       }
@@ -66,7 +54,6 @@ export function isCheck(board: Board, kingColor: 'white' | 'black'): boolean {
 export function isCheckmate(board: Board, currentPlayer: 'white' | 'black'): boolean {
   if (!isCheck(board, currentPlayer)) return false;
 
-  // Check if any move can get the king out of check
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       const piece = board[row][col];
@@ -91,7 +78,6 @@ export function isCheckmate(board: Board, currentPlayer: 'white' | 'black'): boo
 export function isStalemate(board: Board, currentPlayer: 'white' | 'black'): boolean {
   if (isCheck(board, currentPlayer)) return false;
 
-  // Check if any valid move is possible
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       const piece = board[row][col];
@@ -108,6 +94,22 @@ export function isStalemate(board: Board, currentPlayer: 'white' | 'black'): boo
     }
   }
   return true;
+}
+
+export function makeMove(board: Board, move: Move): Board {
+  const newBoard = JSON.parse(JSON.stringify(board));
+  const piece = newBoard[move.from.row][move.from.col];
+  newBoard[move.to.row][move.to.col] = piece;
+  newBoard[move.from.row][move.from.col] = null;
+
+  // Handle pawn promotion
+  if (piece.type === 'P' && (move.to.row === 0 || move.to.row === 7)) {
+    newBoard[move.to.row][move.to.col] = { ...piece, type: move.promotion || 'Q' };
+  }
+
+  // Handle castling and en passant if needed
+
+  return newBoard;
 }
 
 function findKing(board: Board, color: 'white' | 'black'): Position {
@@ -195,31 +197,4 @@ function isValidKingMove(move: Move): boolean {
   const rowDiff = Math.abs(to.row - from.row);
   const colDiff = Math.abs(to.col - from.col);
   return rowDiff <= 1 && colDiff <= 1;
-}
-
-export function makeMove(board: Board, move: Move): Board {
-  const newBoard = JSON.parse(JSON.stringify(board));
-  const piece = newBoard[move.from.row][move.from.col];
-  newBoard[move.to.row][move.to.col] = piece;
-  newBoard[move.from.row][move.from.col] = null;
-
-  // Handle pawn promotion
-  if (piece.type === 'P' && (move.to.row === 0 || move.to.row === 7)) {
-    newBoard[move.to.row][move.to.col] = { ...piece, type: move.promotion || 'Q' };
-  }
-
-  // Handle castling
-  if (piece.type === 'K' && Math.abs(move.to.col - move.from.col) === 2) {
-    const rookFromCol = move.to.col > move.from.col ? 7 : 0;
-    const rookToCol = move.to.col > move.from.col ? 5 : 3;
-    newBoard[move.to.row][rookToCol] = newBoard[move.to.row][rookFromCol];
-    newBoard[move.to.row][rookFromCol] = null;
-  }
-
-  // Handle en passant
-  if (piece.type === 'P' && move.to.col !== move.from.col && !board[move.to.row][move.to.col]) {
-    newBoard[move.from.row][move.to.col] = null;
-  }
-
-  return newBoard;
 }
