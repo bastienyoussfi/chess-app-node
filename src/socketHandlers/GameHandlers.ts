@@ -1,18 +1,23 @@
 import { Server, Socket } from 'socket.io';
 import { GameController } from '../controllers/GameController';
-import { Move } from '../types';
+import Move from '../interfaces/move';
 
 export function setupGameHandlers(io: Server, socket: Socket) {
   const gameController = new GameController();
 
   function emitGameState() {
-    io.emit('gameState', gameController.getGameState());
+    const gameState = gameController.getGameState();
+    console.log('Emitting game state:', gameState);
+    io.emit('gameState', gameState);
   }
 
   // Initial game state
-  emitGameState();
+  socket.on('getGameState', () => {
+    emitGameState();
+  });
 
   socket.on('movePiece', (move: Move) => {
+    console.log('Received move:', move);
     const result = gameController.handleMove(move);
     if (result.success) {
       emitGameState();
@@ -35,7 +40,16 @@ export function setupGameHandlers(io: Server, socket: Socket) {
     }
   });
 
-  socket.on('getGameState', () => {
-    socket.emit('gameState', gameController.getGameState());
+  socket.on('updateTime', (data: { color: 'white' | 'black', timeSpent: number } | null) => {
+    if (data && typeof data === 'object' && 'color' in data && 'timeSpent' in data) {
+      const { color, timeSpent } = data;
+      gameController.handleUpdateTime(color, timeSpent);
+      emitGameState();
+    } else {
+      console.error('Invalid updateTime payload:', data);
+    }
   });
+
+  // Emit initial game state
+  emitGameState();
 }

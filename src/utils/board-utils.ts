@@ -1,4 +1,5 @@
-import { Board } from '../types';
+import { Board, Position } from '../types';
+
 
 export const initialBoard: Board = [
   [
@@ -28,4 +29,16 @@ export const initialBoard: Board = [
 
 export function cloneBoard(board: Board): Board {
   return JSON.parse(JSON.stringify(board));
+}
+
+export function findKing(board: Board, color: 'white' | 'black'): Position {
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = board[row][col];
+      if (piece && piece.type === 'K' && piece.color === color) {
+        return { row, col };
+      }
+    }
+  }
+  throw new Error(`${color} king not found`);
 }
