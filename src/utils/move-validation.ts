@@ -107,7 +107,7 @@ export function makeMove(board: Board, move: Move): Board {
     newBoard[move.to.row][move.to.col] = { ...piece, type: move.promotion || 'Q' };
   }
 
-  // Handle castling and en passant if needed
+  // TODO: Handle castling and en passant
 
   return newBoard;
 }

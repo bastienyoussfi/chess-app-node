@@ -1,4 +1,5 @@
-import { Board, Position } from '../types';
+import Board from '../types/board';
+import Position from '../interfaces/position';
 
 
 export const initialBoard: Board = [
